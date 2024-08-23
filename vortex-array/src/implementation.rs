@@ -133,6 +133,11 @@ macro_rules! impl_encoding {
                 }
 
                 #[inline]
+                fn with_validity(&self, array: $crate::Array, validity: $crate::validity::Validity) -> vortex_error::VortexResult<$crate::Array> {
+                    <Self as $crate::encoding::ArrayEncodingExt>::with_validity(array, validity)
+                }
+
+                #[inline]
                 fn with_dyn(
                     &self,
                     array: &$crate::Array,

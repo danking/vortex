@@ -9,6 +9,7 @@ use vortex_error::{vortex_bail, VortexError, VortexResult};
 use vortex_scalar::{PValue, PrimitiveScalar};
 
 use crate::compute::unary::ScalarAtFn;
+use crate::encoding::WithValidity;
 use crate::stats::StatsSet;
 use crate::validity::{ArrayValidity, LogicalValidity, Validity, ValidityMetadata};
 use crate::variants::{ArrayVariants, PrimitiveArrayTrait};
@@ -212,6 +213,14 @@ impl<T: NativePType> IntoArray for Vec<T> {
 impl IntoCanonical for PrimitiveArray {
     fn into_canonical(self) -> VortexResult<Canonical> {
         Ok(Canonical::Primitive(self))
+    }
+}
+
+impl WithValidity for PrimitiveArray {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array> {
+        let ptype = self.ptype();
+        let buffer = self.into_buffer();
+        Ok(PrimitiveArray::new(buffer, ptype, validity).into_array())
     }
 }
 

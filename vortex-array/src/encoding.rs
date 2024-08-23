@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use vortex_error::VortexResult;
 
 use crate::canonical::{Canonical, IntoCanonical};
+use crate::validity::Validity;
 use crate::{Array, ArrayDef, ArrayTrait};
 
 // TODO(robert): Outline how you create a well known encoding id
@@ -47,6 +48,8 @@ pub trait ArrayEncoding: 'static + Sync + Send + Debug {
     /// Flatten the given array.
     fn canonicalize(&self, array: Array) -> VortexResult<Canonical>;
 
+    fn with_validity(&self, array: Array, validity: Validity) -> VortexResult<Array>;
+
     /// Unwrap the provided array into an implementation of ArrayTrait
     fn with_dyn(
         &self,
@@ -67,6 +70,16 @@ impl Hash for dyn ArrayEncoding + '_ {
     }
 }
 
+pub trait WithValidity {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array>;
+}
+
+impl WithValidity for Array {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array> {
+        self.encoding().with_validity(self, validity)
+    }
+}
+
 /// Non-object-safe extensions to the ArrayEncoding trait.
 pub trait ArrayEncodingExt {
     type D: ArrayDef;
@@ -74,6 +87,11 @@ pub trait ArrayEncodingExt {
     fn into_canonical(array: Array) -> VortexResult<Canonical> {
         let typed = <<Self::D as ArrayDef>::Array as TryFrom<Array>>::try_from(array)?;
         IntoCanonical::into_canonical(typed)
+    }
+
+    fn with_validity(array: Array, validity: Validity) -> VortexResult<Array> {
+        let typed = <<Self::D as ArrayDef>::Array as TryFrom<Array>>::try_from(array)?;
+        WithValidity::with_validity(typed, validity)
     }
 
     fn with_dyn<R, F>(array: &Array, mut f: F) -> R
