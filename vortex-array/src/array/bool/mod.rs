@@ -6,11 +6,14 @@ use vortex_buffer::Buffer;
 use vortex_dtype::DType;
 use vortex_error::VortexResult;
 
+use crate::encoding::WithValidity;
 use crate::stats::StatsSet;
 use crate::validity::{ArrayValidity, LogicalValidity, Validity, ValidityMetadata};
 use crate::variants::{ArrayVariants, BoolArrayTrait};
 use crate::visitor::{AcceptArrayVisitor, ArrayVisitor};
-use crate::{impl_encoding, ArrayDef, ArrayTrait, Canonical, IntoCanonical, TypedArray};
+use crate::{
+    impl_encoding, Array, ArrayDef, ArrayTrait, Canonical, IntoArray, IntoCanonical, TypedArray,
+};
 
 mod accessors;
 mod compute;
@@ -133,6 +136,13 @@ impl FromIterator<Option<bool>> for BoolArray {
 impl IntoCanonical for BoolArray {
     fn into_canonical(self) -> VortexResult<Canonical> {
         Ok(Canonical::Bool(self))
+    }
+}
+
+impl WithValidity for BoolArray {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array> {
+        let bool_array = BoolArray::try_new(self.boolean_buffer(), validity)?;
+        Ok(bool_array.into_array())
     }
 }
 

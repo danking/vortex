@@ -16,11 +16,12 @@ use crate::array::primitive::PrimitiveArray;
 use crate::array::varbin::VarBinArray;
 use crate::arrow::FromArrowArray;
 use crate::compute::slice;
+use crate::encoding::WithValidity;
 use crate::stats::StatsSet;
 use crate::validity::{ArrayValidity, LogicalValidity, Validity, ValidityMetadata};
 use crate::visitor::{AcceptArrayVisitor, ArrayVisitor};
 use crate::{
-    impl_encoding, Array, ArrayDType, ArrayDef, ArrayTrait, Canonical, IntoArrayVariant,
+    impl_encoding, Array, ArrayDType, ArrayDef, ArrayTrait, Canonical, IntoArray, IntoArrayVariant,
     IntoCanonical,
 };
 
@@ -306,6 +307,25 @@ fn as_arrow(var_bin_view: VarBinViewArray) -> ArrayRef {
             nulls,
         )),
         _ => panic!("expected utf8 or binary, got {}", var_bin_view.dtype()),
+    }
+}
+
+impl WithValidity for VarBinViewArray {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array> {
+        let n = self.metadata().data_lens.len();
+        Ok(VarBinViewArray::try_new(
+            self.views(),
+            (1..=n)
+                .map(|idx| {
+                    self.array()
+                        .child(idx, &DType::BYTES, self.metadata().data_lens[idx])
+                        .expect("length of children should match length of data lens")
+                })
+                .collect(),
+            self.dtype().clone(),
+            validity,
+        )?
+        .into_array())
     }
 }
 

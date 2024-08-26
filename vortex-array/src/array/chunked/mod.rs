@@ -12,6 +12,7 @@ use vortex_scalar::Scalar;
 use crate::array::primitive::PrimitiveArray;
 use crate::compute::unary::{scalar_at, subtract_scalar, SubtractScalarFn};
 use crate::compute::{search_sorted, SearchResult, SearchSortedSide};
+use crate::encoding::WithValidity;
 use crate::iter::{ArrayIterator, ArrayIteratorAdapter};
 use crate::stats::StatsSet;
 use crate::stream::{ArrayStream, ArrayStreamAdapter};
@@ -33,6 +34,7 @@ pub struct ChunkedMetadata {
 }
 
 impl ChunkedArray {
+    /// Hello these are docs
     const ENDS_DTYPE: DType = DType::Primitive(PType::U64, Nullability::NonNullable);
 
     pub fn try_new(chunks: Vec<Array>, dtype: DType) -> VortexResult<Self> {
@@ -160,6 +162,28 @@ impl AcceptArrayVisitor for ChunkedArray {
             visitor.visit_child(format!("[{}]", idx).as_str(), &chunk)?;
         }
         Ok(())
+    }
+}
+
+impl WithValidity for ChunkedArray {
+    fn with_validity(self, validity: Validity) -> VortexResult<Array> {
+        let offsets = self.chunk_offsets();
+        let n_chunks = self.metadata().num_chunks;
+        (0..n_chunks).map(|idx| -> VortexResult<Array> {
+            let chunk_start = usize::try_from(&scalar_at(&offsets, idx)?)?;
+            let chunk_end = usize::try_from(&scalar_at(&offsets, idx)?)?;
+            let chunk = self.chunk(idx).ok_or("out of bounds chunk")?;
+            Ok(chunk)
+        });
+        todo!()
+        // Ok(ChunkedArray::try_from_parts(
+        //     self.dtype().clone(),
+        //     self.len(),
+        //     self.metadata().clone(),
+        //     todo!(),
+        //     StatsSet::new(),
+        // )?
+        // .into_array())
     }
 }
 

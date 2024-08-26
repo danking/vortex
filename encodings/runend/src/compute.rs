@@ -51,10 +51,12 @@ impl TakeFn for RunEndArray {
                 })
                 .collect::<VortexResult<Vec<_>>>()?
         });
+        let validity = self.validity().take(primitive_indices);
         take(
             &self.values(),
             &PrimitiveArray::from(physical_indices).into_array(),
         )
+        .with_validity(validity)
     }
 }
 
