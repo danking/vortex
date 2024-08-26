@@ -5,8 +5,10 @@ use num_traits::AsPrimitive;
 use serde::{Deserialize, Serialize};
 use vortex_buffer::Buffer;
 use vortex_dtype::{match_each_native_ptype, DType, NativePType, PType};
-use vortex_error::{vortex_bail, VortexResult};
+use vortex_error::{vortex_bail, VortexError, VortexResult};
+use vortex_scalar::{PValue, PrimitiveScalar};
 
+use crate::compute::unary::ScalarAtFn;
 use crate::stats::StatsSet;
 use crate::validity::{ArrayValidity, LogicalValidity, Validity, ValidityMetadata};
 use crate::variants::{ArrayVariants, PrimitiveArrayTrait};
@@ -67,6 +69,21 @@ impl PrimitiveArray {
         let elems: Vec<T> = values.iter().map(|v| v.unwrap_or_default()).collect();
         let validity = Validity::from(values.iter().map(|v| v.is_some()).collect::<Vec<_>>());
         Self::from_vec(elems, validity)
+    }
+
+    pub fn nullable_vec<T: NativePType + TryFrom<PValue, Error = VortexError>>(
+        &self,
+    ) -> Vec<Option<T>> {
+        let n = self.len();
+        (0..n)
+            .map(|i| {
+                self.is_valid(i).then(|| {
+                    let s = self.scalar_at_unchecked(i);
+                    let ps = PrimitiveScalar::try_from(&s).expect("should be primitive");
+                    ps.typed_value::<T>().expect("underlying value was null")
+                })
+            })
+            .collect()
     }
 
     /// Creates a new array of type U8

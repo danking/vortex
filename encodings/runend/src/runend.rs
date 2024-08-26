@@ -165,8 +165,9 @@ impl ArrayStatisticsCompute for RunEndArray {}
 
 #[cfg(test)]
 mod test {
-    use vortex::compute::slice;
+    use vortex::array::{BoolArray, PrimitiveArray};
     use vortex::compute::unary::scalar_at;
+    use vortex::compute::{slice, ArrayCompute};
     use vortex::validity::Validity;
     use vortex::{ArrayDType, IntoArray, IntoArrayVariant};
     use vortex_dtype::{DType, Nullability, PType};
@@ -260,6 +261,35 @@ mod test {
         assert_eq!(
             arr.into_primitive().unwrap().maybe_null_slice::<i32>(),
             vec![1, 1, 2, 2, 2, 3, 3, 3, 3, 3]
+        );
+    }
+
+    #[test]
+    fn with_nulls() {
+        let uncompressed = PrimitiveArray::from_nullable_vec(vec![Some(1i32), None, Some(3)]);
+        let validity = BoolArray::from_vec(
+            vec![
+                true, true, false, false, false, true, true, true, true, true,
+            ],
+            Validity::NonNullable,
+        );
+        let arr = RunEndArray::try_new(
+            vec![2u32, 5, 10].into_array(),
+            uncompressed.into(),
+            Validity::Array(validity.into()),
+        )
+        .unwrap();
+
+        let test_indices = PrimitiveArray::from_vec(vec![0, 2, 4, 6], Validity::NonNullable);
+        assert_eq!(
+            arr.take()
+                .expect("runend supports take")
+                .take(&test_indices.into())
+                .expect("expect take to work")
+                .into_primitive()
+                .expect("into_primitive failed")
+                .nullable_vec::<i32>(),
+            vec![Some(1), None, None, Some(3),]
         );
     }
 }

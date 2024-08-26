@@ -84,7 +84,7 @@ impl ArrayData {
                     child.dtype(),
                     dtype,
                     "Child {index} requested with incorrect dtype for encoding {}",
-                    self.encoding().id()
+                    self.encoding().id(),
                 );
                 assert_eq!(
                     child.len(),
